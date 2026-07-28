@@ -1,0 +1,394 @@
+{
+  "info": {
+    "name": "Mini ERP + CRM API",
+    "description": "Full Stack Developer Case Study — Mini ERP + CRM Operations Portal. Covers Auth, Customer CRM, Product & Inventory, and Sales Challan modules.\n\nSet the `base_url` collection variable to either:\n- Local: http://localhost:4000/api\n- Live: https://erp-system-2c6t.onrender.com/api\n\nRun 'Login' first to auto-populate the `jwt_token` variable used by all protected requests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://erp-system-2c6t.onrender.com/api",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customer_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "product_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "challan_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  const token = json.data?.token || json.token;",
+                  "  if (token) {",
+                  "    pm.collectionVariables.set('jwt_token', token);",
+                  "    console.log('jwt_token saved to collection variable');",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@erp.com\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Login and receive a JWT. This request auto-saves the token to the `jwt_token` collection variable for use by all other requests.\n\nOther test accounts:\n- sales@erp.com / sales123\n- warehouse@erp.com / warehouse123\n- accounts@erp.com / accounts123"
+          }
+        },
+        {
+          "name": "Seed Test Users",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/seed",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "seed"]
+            },
+            "description": "One-time setup endpoint. Creates the 4 test users (Admin/Sales/Warehouse/Accounts) if they don't already exist. Safe to call multiple times — returns which were newly created vs already existed."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customers",
+      "item": [
+        {
+          "name": "List Customers",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/customers?page=1&limit=10&search=&status=&customerType=",
+              "host": ["{{base_url}}"],
+              "path": ["customers"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "search", "value": "", "description": "Matches name/email/mobile" },
+                { "key": "status", "value": "", "description": "LEAD | ACTIVE | INACTIVE" },
+                { "key": "customerType", "value": "", "description": "RETAIL | WHOLESALE | DISTRIBUTOR" }
+              ]
+            },
+            "description": "Paginated, searchable, filterable list of customers."
+          }
+        },
+        {
+          "name": "Create Customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  const id = json.data?.customer?.id;",
+                  "  if (id) pm.collectionVariables.set('customer_id', id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Rajesh Kumar\",\n  \"mobile\": \"9876543210\",\n  \"email\": \"rajesh@example.com\",\n  \"businessName\": \"Kumar Traders\",\n  \"gstNumber\": \"22AAAAA0000A1Z5\",\n  \"customerType\": \"WHOLESALE\",\n  \"address\": \"123 Market Street, Delhi\",\n  \"status\": \"LEAD\",\n  \"followUpDate\": \"2026-08-15\",\n  \"notes\": \"Interested in bulk stationery order\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/customers",
+              "host": ["{{base_url}}"],
+              "path": ["customers"]
+            },
+            "description": "Creates a new customer. Auto-saves the returned ID to `customer_id` for use in the requests below."
+          }
+        },
+        {
+          "name": "Get Customer By ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/customers/{{customer_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["customers", "{{customer_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Customer",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACTIVE\",\n  \"notes\": \"Converted to active customer after first order\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/customers/{{customer_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["customers", "{{customer_id}}"]
+            },
+            "description": "Partial update — send only the fields you want to change. Optional fields (gstNumber, notes, followUpDate) accept null to clear them."
+          }
+        },
+        {
+          "name": "Add Follow-Up Note",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Called customer, they'll place order next week\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/customers/{{customer_id}}/followups",
+              "host": ["{{base_url}}"],
+              "path": ["customers", "{{customer_id}}", "followups"]
+            },
+            "description": "Adds a new timestamped follow-up note. A customer can have multiple follow-ups over time."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Products",
+      "item": [
+        {
+          "name": "List Products",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/products?page=1&limit=10&search=&category=&lowStock=false",
+              "host": ["{{base_url}}"],
+              "path": ["products"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "search", "value": "", "description": "Matches name/SKU" },
+                { "key": "category", "value": "" },
+                { "key": "lowStock", "value": "false", "description": "true = only items at/below minStockAlert" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  const id = json.data?.product?.id;",
+                  "  if (id) pm.collectionVariables.set('product_id', id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"A4 Paper Ream (500 sheets)\",\n  \"sku\": \"PAP-A4-500\",\n  \"category\": \"Stationery\",\n  \"unitPrice\": 250,\n  \"currentStock\": 100,\n  \"minStockAlert\": 20,\n  \"location\": \"Warehouse A - Rack 3\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/products",
+              "host": ["{{base_url}}"],
+              "path": ["products"]
+            },
+            "description": "Creates a new product. Auto-saves the returned ID to `product_id`."
+          }
+        },
+        {
+          "name": "Get Product By ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/products/{{product_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["products", "{{product_id}}"]
+            },
+            "description": "Returns product details plus its full stock movement history."
+          }
+        },
+        {
+          "name": "Update Product",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"unitPrice\": 275,\n  \"minStockAlert\": 25\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/products/{{product_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["products", "{{product_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Add Stock Movement",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 50,\n  \"movementType\": \"IN\",\n  \"reason\": \"Purchase order #PO-2026-014 received\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/products/{{product_id}}/stock-movements",
+              "host": ["{{base_url}}"],
+              "path": ["products", "{{product_id}}", "stock-movements"]
+            },
+            "description": "Manually logs a stock IN or OUT movement outside of the challan flow (e.g. purchase receipts, damage write-offs, manual corrections). movementType must be 'IN' or 'OUT'."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Challans",
+      "item": [
+        {
+          "name": "List Challans",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/challans?page=1&limit=10&search=&status=&customerId=",
+              "host": ["{{base_url}}"],
+              "path": ["challans"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "search", "value": "" },
+                { "key": "status", "value": "", "description": "DRAFT | CONFIRMED | CANCELLED" },
+                { "key": "customerId", "value": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Challan (Draft)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  const id = json.data?.challan?.id;",
+                  "  if (id) pm.collectionVariables.set('challan_id', id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customer_id}}\",\n  \"items\": [\n    { \"productId\": \"{{product_id}}\", \"quantity\": 5 }\n  ],\n  \"status\": \"DRAFT\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/challans",
+              "host": ["{{base_url}}"],
+              "path": ["challans"]
+            },
+            "description": "Creates a challan. Set status to 'DRAFT' to save without affecting stock, or 'CONFIRMED' to create and immediately deduct stock in one step. Auto-saves the returned ID to `challan_id`."
+          }
+        },
+        {
+          "name": "Get Challan By ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/challans/{{challan_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["challans", "{{challan_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Confirm Challan",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/challans/{{challan_id}}/confirm",
+              "host": ["{{base_url}}"],
+              "path": ["challans", "{{challan_id}}", "confirm"]
+            },
+            "description": "Confirms a Draft challan. Runs a transaction that validates stock, deducts it, logs an OUT stock movement per line item, and sets status to CONFIRMED. Returns 400 with a validation error if any item has insufficient stock — no partial deduction occurs."
+          }
+        },
+        {
+          "name": "Cancel Challan",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/challans/{{challan_id}}/cancel",
+              "host": ["{{base_url}}"],
+              "path": ["challans", "{{challan_id}}", "cancel"]
+            },
+            "description": "Cancels a Confirmed challan. Restores stock and logs an IN movement per line item to reverse the original deduction."
+          }
+        }
+      ]
+    }
+  ]
+}
