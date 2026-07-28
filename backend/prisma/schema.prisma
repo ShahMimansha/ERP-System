@@ -1,0 +1,139 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  SALES
+  WAREHOUSE
+  ACCOUNTS
+}
+
+enum CustomerType {
+  RETAIL
+  WHOLESALE
+  DISTRIBUTOR
+}
+
+enum CustomerStatus {
+  LEAD
+  ACTIVE
+  INACTIVE
+}
+
+enum MovementType {
+  IN
+  OUT
+}
+
+enum ChallanStatus {
+  DRAFT
+  CONFIRMED
+  CANCELLED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      UserRole
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  followUps      FollowUp[]      @relation("FollowUpCreator")
+  stockMovements StockMovement[] @relation("StockMovementCreator")
+  challans       Challan[]       @relation("ChallanCreator")
+}
+
+model Customer {
+  id           String         @id @default(uuid())
+  name         String
+  mobile       String
+  email        String
+  businessName String
+  gstNumber    String?
+  customerType CustomerType
+  address      String
+  status       CustomerStatus
+  followUpDate DateTime?
+  notes        String?        @db.Text
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  followUps FollowUp[]
+  challans  Challan[]
+}
+
+model FollowUp {
+  id         String   @id @default(uuid())
+  customerId String
+  content    String   @db.Text
+  createdBy  String
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  user     User     @relation("FollowUpCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+}
+
+model Product {
+  id            String   @id @default(uuid())
+  name          String
+  sku           String   @unique
+  category      String
+  unitPrice     Decimal  @db.Decimal(10, 2)
+  currentStock  Int      @default(0)
+  minStockAlert Int      @default(5)
+  location      String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  stockMovements StockMovement[]
+  challanItems   ChallanItem[]
+}
+
+model StockMovement {
+  id           String       @id @default(uuid())
+  productId    String
+  quantity     Int
+  movementType MovementType
+  reason       String       @db.Text
+  createdBy    String
+  createdAt    DateTime     @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User    @relation("StockMovementCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+}
+
+model Challan {
+  id            String        @id @default(uuid())
+  challanNumber Int           @unique @default(autoincrement())
+  customerId    String
+  status        ChallanStatus
+  totalQuantity Int
+  createdBy     String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  customer Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  user     User          @relation("ChallanCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  items    ChallanItem[]
+}
+
+model ChallanItem {
+  id                   String   @id @default(uuid())
+  challanId            String
+  productId            String
+  productSnapshotName  String
+  productSnapshotPrice Decimal  @db.Decimal(10, 2)
+  quantity             Int
+  createdAt            DateTime @default(now())
+
+  challan Challan @relation(fields: [challanId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
